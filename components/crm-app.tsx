@@ -2049,7 +2049,7 @@ function TemplatePreviewList({
               <span>{template.category}</span>
               <strong>{template.name}</strong>
             </div>
-            <p>{renderTemplate(template.body, lead)}</p>
+            <p>{renderTemplate(template, lead)}</p>
             <button className={copied ? "secondary-button copied" : "secondary-button"} onClick={() => onCopy(lead, template.id)}>
               {copied ? <Check size={16} /> : <Clipboard size={16} />}
               {copied ? "Copied" : "Copy"}
