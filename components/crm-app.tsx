@@ -356,7 +356,7 @@ function getImportDuplicateMatches(
   return matches;
 }
 
-function parseImportedLeadRows(raw: string, leads: Lead[]) {
+function parseImportedLeadRows(raw: string, leads: Lead[]): ImportedLeadRow[] {
   const baseRows = raw
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -378,7 +378,7 @@ function parseImportedLeadRows(raw: string, leads: Lead[]) {
 
   return baseRows.map((row) => {
     const duplicateMatches = getImportDuplicateMatches(row, leads, baseRows);
-    const duplicateStatus = duplicateMatches.some((match) => match.type === "exact")
+    const duplicateStatus: ImportedLeadRow["duplicateStatus"] = duplicateMatches.some((match) => match.type === "exact")
       ? "exact"
       : duplicateMatches.length > 0
         ? "possible"
