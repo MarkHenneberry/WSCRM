@@ -3,123 +3,66 @@ import type { Activity, Lead, MessageTemplate, SalesStage, TemplateCategory } fr
 
 const STORAGE_KEY = "local-business-crm-leads";
 const TEMPLATE_STORAGE_KEY = "local-business-crm-templates";
+const LEADS_BACKUP_LATEST_KEY = "local-business-crm-leads-backup-latest";
 
-const today = new Date();
 const makeId = () => globalThis.crypto?.randomUUID?.() ?? `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-const isoDate = (date: Date) => {
+const timestampForBackupKey = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day}-${hours}-${minutes}-${seconds}`;
 };
-const addDays = (days: number) => {
-  const date = new Date(today);
-  date.setDate(today.getDate() + days);
-  return isoDate(date);
-};
-
-function makeActivity(
-  title: string,
-  type: Activity["type"] = "created",
-  description?: string
-): Activity {
-  return {
-    id: makeId(),
-    type,
-    title,
-    description,
-    createdAt: new Date().toISOString()
-  };
-}
-
-export const sampleLeads: Lead[] = [
-  {
-    id: makeId(),
-    businessName: "Harbourfront Auto Detailing",
-    contactName: "Ryan Cole",
-    businessType: "Auto detailing",
-    source: "Facebook",
-    websiteUrl: "",
-    facebookUrl: "https://facebook.com/",
-    phone: "19025550122",
-    email: "ryan@example.com",
-    websiteStatus: "No website",
-    salesStage: "Contacted",
-    lastContactedDate: isoDate(today),
-    nextFollowUpDate: isoDate(today),
-    notes: "Mentioned they mostly get leads through Facebook posts. Strong candidate for a simple booking site.",
-    activities: [
-      makeActivity("Lead created"),
-      makeActivity("First outreach copied", "message", "Sent a short Facebook message.")
-    ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: makeId(),
-    businessName: "North End Family Dental",
-    contactName: "Maya Singh",
-    businessType: "Dental clinic",
-    source: "Google",
-    websiteUrl: "https://example.com",
-    facebookUrl: "",
-    phone: "19025550145",
-    email: "maya@example.com",
-    websiteStatus: "Weak website",
-    salesStage: "Interested",
-    lastContactedDate: addDays(-2),
-    nextFollowUpDate: addDays(1),
-    notes: "Website loads slowly on mobile and booking CTA is buried.",
-    activities: [
-      makeActivity("Lead created"),
-      makeActivity("Stage changed to Interested", "stage", "Asked to see examples.")
-    ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: makeId(),
-    businessName: "Maple Street Landscaping",
-    contactName: "Alex Martin",
-    businessType: "Landscaping",
-    source: "Referral",
-    websiteUrl: "https://example.org",
-    facebookUrl: "https://facebook.com/",
-    phone: "19025550188",
-    email: "",
-    websiteStatus: "Broken website",
-    salesStage: "Demo Sent",
-    lastContactedDate: addDays(-5),
-    nextFollowUpDate: addDays(-1),
-    notes: "Homepage hero image is broken. Demo sent with a stronger seasonal quote request page.",
-    activities: [
-      makeActivity("Lead created"),
-      makeActivity("Demo sent", "message", "Sent preview link and pricing range.")
-    ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-];
 
 export function loadLeads(): Lead[] {
-  if (typeof window === "undefined") return sampleLeads;
+  if (typeof window === "undefined") return [];
 
   const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleLeads));
-    return sampleLeads;
-  }
+  if (!raw) return [];
 
   try {
     return JSON.parse(raw) as Lead[];
   } catch {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleLeads));
-    return sampleLeads;
+    return [];
   }
 }
 
-export function saveLeads(leads: Lead[]) {
+function safeParseLeadArray(raw: string | null): Lead[] {
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as Lead[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLeadBackups(previousRaw: string) {
+  const now = new Date();
+  window.localStorage.setItem(LEADS_BACKUP_LATEST_KEY, previousRaw);
+  window.localStorage.setItem(`local-business-crm-leads-backup-${timestampForBackupKey(now)}`, previousRaw);
+}
+
+export function saveLeads(leads: Lead[], options: { allowEmptyOverwrite?: boolean } = {}) {
+  const previousRaw = window.localStorage.getItem(STORAGE_KEY);
+  const previousLeads = safeParseLeadArray(previousRaw);
+
+  if (previousRaw) {
+    writeLeadBackups(previousRaw);
+  }
+
+  if (leads.length === 0 && previousLeads.length > 0 && !options.allowEmptyOverwrite) {
+    const confirmed = window.confirm(
+      "This would save zero leads over existing leads. Continue? This cannot be undone without a backup."
+    );
+    if (!confirmed) return false;
+  }
+
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+  return true;
 }
 
 function normalizeTemplate(template: Partial<MessageTemplate>, index: number): MessageTemplate {

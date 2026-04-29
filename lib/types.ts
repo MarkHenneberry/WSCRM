@@ -29,6 +29,15 @@ export type SalesStage = (typeof salesStages)[number];
 export type TemplateCategory = (typeof templateCategories)[number];
 
 export type ActivityType = "created" | "updated" | "note" | "message" | "stage";
+export type LeadProblemType = "no website" | "broken website" | "weak presence" | "solid";
+
+export type LeadAuditResult = {
+  problem_type: LeadProblemType;
+  lead_score: number;
+  insight: string;
+  first_message: string;
+  follow_up_message: string;
+};
 
 export type Activity = {
   id: string;
@@ -53,6 +62,13 @@ export type Lead = {
   lastContactedDate: string;
   nextFollowUpDate: string;
   notes: string;
+  discoveryLink?: string;
+  problemType?: LeadProblemType;
+  leadScore?: number;
+  leadInsight?: string;
+  firstMessage?: string;
+  followUpMessage?: string;
+  auditUpdatedAt?: string;
   activities: Activity[];
   createdAt: string;
   updatedAt: string;
@@ -80,6 +96,7 @@ export type MessageTemplate = {
 
 export type LeadFilters = {
   query: string;
+  businessType: "All" | string;
   stage: "All" | SalesStage;
   websiteStatus: "All" | WebsiteStatus;
   source: "All" | LeadSource;
